@@ -8,6 +8,7 @@ import (
 	controller "github.com/Adarsh-Kmt/EndServer/controller"
 	generatedCode "github.com/Adarsh-Kmt/EndServer/generatedCode"
 	grpc_server "github.com/Adarsh-Kmt/EndServer/grpc_server"
+	service "github.com/Adarsh-Kmt/EndServer/service"
 	"github.com/gorilla/mux"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -58,8 +59,14 @@ func main() {
 	}
 	DNGRPCClient := generatedCode.NewDistributionServerMessageServiceClient(DNGRPCConn)
 	muxRouter := mux.NewRouter()
-	uc := controller.NewUserControllerInstance(DNGRPCClient, *endServerInstance)
+	ms := service.NewMessageServiceImplInstance(DNGRPCClient, *endServerInstance)
 
+	if ms == nil {
+		log.Fatal("ms not initialized")
+	} else {
+		log.Println("ms initialized")
+	}
+	uc := controller.NewUserControllerInstance(ms)
 	if uc == nil {
 		log.Fatal("uc not initialized")
 	} else {
