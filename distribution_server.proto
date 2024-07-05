@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/Adarsh-Kmt/EndServer/main";
+option go_package = "github.com/Adarsh-Kmt/EndServer/generatedCode";
 
 message DistributionServerMessage{
 

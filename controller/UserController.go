@@ -1,4 +1,4 @@
-package main
+package controller
 
 import (
 	"context"
@@ -6,13 +6,15 @@ import (
 	"log"
 	"net/http"
 
+	generatedCode "github.com/Adarsh-Kmt/EndServer/generatedCode"
+	grpc_server "github.com/Adarsh-Kmt/EndServer/grpc_server"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
 
 type UserController struct {
-	distributorNodeGRPCClient DistributionServerMessageServiceClient
-	es                        EndServer
+	distributorNodeGRPCClient generatedCode.DistributionServerMessageServiceClient
+	es                        grpc_server.EndServer
 }
 
 type HttpError struct {
@@ -46,7 +48,7 @@ func MakeHttpHandlerFunc(f HttpFunc) http.HandlerFunc {
 	}
 }
 
-func NewUserControllerInstance(DNGRPCClient DistributionServerMessageServiceClient, es EndServer) *UserController {
+func NewUserControllerInstance(DNGRPCClient generatedCode.DistributionServerMessageServiceClient, es grpc_server.EndServer) *UserController {
 
 	return &UserController{distributorNodeGRPCClient: DNGRPCClient, es: es}
 }
@@ -66,7 +68,7 @@ func (uc *UserController) SendMessage(w http.ResponseWriter, r *http.Request) *H
 
 	userId := vars["userId"]
 
-	connectionMessage := DistributionServerConnectionRequest{UserId: userId, EndServerAddress: uc.es.containerName + ":3000"}
+	connectionMessage := generatedCode.DistributionServerConnectionRequest{UserId: userId, EndServerAddress: uc.es.ContainerName + ":3000"}
 
 	connectionResponse, _ := uc.distributorNodeGRPCClient.UserConnected(context.Background(), &connectionMessage)
 
@@ -80,7 +82,7 @@ func (uc *UserController) SendMessage(w http.ResponseWriter, r *http.Request) *H
 		//return &HttpError{Error: "error while informing distributor Node.", status: 500}
 	}
 
-	uc.es.activeConn[userId] = conn
+	uc.es.ActiveConn[userId] = conn
 
 	log.Println("user connected")
 
@@ -100,7 +102,7 @@ func (uc *UserController) SendMessage(w http.ResponseWriter, r *http.Request) *H
 		}
 
 		var localMessage Message
-		var grpcMessage DistributionServerMessage
+		var grpcMessage generatedCode.DistributionServerMessage
 
 		if err := json.Unmarshal(message, &localMessage); err != nil {
 			log.Fatal(err.Error())
@@ -110,7 +112,7 @@ func (uc *UserController) SendMessage(w http.ResponseWriter, r *http.Request) *H
 		}
 
 		log.Println(localMessage)
-		grpcMessage = DistributionServerMessage{ReceiverId: localMessage.ReceiverId, SenderId: localMessage.SenderId, Body: localMessage.Body}
+		grpcMessage = generatedCode.DistributionServerMessage{ReceiverId: localMessage.ReceiverId, SenderId: localMessage.SenderId, Body: localMessage.Body}
 		log.Println(grpcMessage.Body + " message received")
 		// if _, exists := uc.es.activeConn[grpcMessage.SenderId]; !exists {
 

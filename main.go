@@ -5,8 +5,10 @@ import (
 	"net"
 	"net/http"
 
+	controller "github.com/Adarsh-Kmt/EndServer/controller"
+	generatedCode "github.com/Adarsh-Kmt/EndServer/generatedCode"
+	grpc_server "github.com/Adarsh-Kmt/EndServer/grpc_server"
 	"github.com/gorilla/mux"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -15,7 +17,7 @@ import (
 
 func main() {
 
-	endServerInstance := NewEndServerInstance()
+	endServerInstance := grpc_server.NewEndServerInstance()
 
 	if endServerInstance == nil {
 		log.Fatal("end server instance not initialized")
@@ -31,7 +33,7 @@ func main() {
 		log.Println("grpc end server initialized")
 	}
 
-	RegisterEndServerMessageServiceServer(ENGRPCServer, endServerInstance)
+	generatedCode.RegisterEndServerMessageServiceServer(ENGRPCServer, endServerInstance)
 
 	go func() {
 
@@ -54,9 +56,9 @@ func main() {
 	if DNGRPCConn != nil {
 		log.Println("connection initialized")
 	}
-	DNGRPCClient := NewDistributionServerMessageServiceClient(DNGRPCConn)
+	DNGRPCClient := generatedCode.NewDistributionServerMessageServiceClient(DNGRPCConn)
 	muxRouter := mux.NewRouter()
-	uc := NewUserControllerInstance(DNGRPCClient, *endServerInstance)
+	uc := controller.NewUserControllerInstance(DNGRPCClient, *endServerInstance)
 
 	if uc == nil {
 		log.Fatal("uc not initialized")
