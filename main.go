@@ -6,6 +6,8 @@ import (
 	"net/http"
 
 	controller "github.com/Adarsh-Kmt/EndServer/controller"
+	"github.com/Adarsh-Kmt/EndServer/db"
+	"github.com/Adarsh-Kmt/EndServer/repository"
 
 	grpc_server "github.com/Adarsh-Kmt/EndServer/grpc_server"
 	service "github.com/Adarsh-Kmt/EndServer/service"
@@ -42,7 +44,16 @@ func main() {
 	DNGRPCClient := grpc_server.NewDistributionServerClientInstance()
 
 	muxRouter := mux.NewRouter()
+
+	mysqldb, err := db.NewMySQLDatabaseInstance()
+
+	if err != nil {
+
+		log.Fatal("error wrt mysql db: ", err.Error())
+	}
+	ur := repository.NewUserRepositoryImplInstance(mysqldb)
 	ms := service.NewMessageServiceImplInstance(DNGRPCClient, *endServerInstance)
+	us := service.NewUserServiceImplInstance(ur)
 
 	if ms == nil {
 		log.Fatal("ms not initialized")
@@ -50,7 +61,7 @@ func main() {
 		log.Println("ms initialized")
 	}
 
-	uc := controller.NewUserControllerInstance(ms)
+	uc := controller.NewUserControllerInstance(ms, us)
 
 	if uc == nil {
 		log.Fatal("uc not initialized")
