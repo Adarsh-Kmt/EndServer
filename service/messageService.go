@@ -13,7 +13,7 @@ import (
 )
 
 type MessageService interface {
-	SendMessage(conn *websocket.Conn)
+	SendMessage(senderUsername string, conn *websocket.Conn)
 	UserConnected(userId string, conn *websocket.Conn) error
 }
 
@@ -26,7 +26,7 @@ func NewMessageServiceImplInstance(distributionServerClient generatedCode.Distri
 
 	return &MessageServiceImpl{DistributionServerClient: distributionServerClient, EndServer: endServer}
 }
-func (ms *MessageServiceImpl) SendMessage(conn *websocket.Conn) {
+func (ms *MessageServiceImpl) SendMessage(senderUsername string, conn *websocket.Conn) {
 
 	for {
 
@@ -49,7 +49,7 @@ func (ms *MessageServiceImpl) SendMessage(conn *websocket.Conn) {
 		}
 
 		log.Println(localMessage)
-		grpcMessage = generatedCode.DistributionServerMessage{ReceiverId: localMessage.ReceiverUserId, SenderId: localMessage.SenderUserId, Body: localMessage.Body}
+		grpcMessage = generatedCode.DistributionServerMessage{ReceiverId: localMessage.ReceiverUserId, SenderId: senderUsername, Body: localMessage.Body}
 		log.Println(grpcMessage.Body + " message received")
 
 		response, err := ms.DistributionServerClient.SendMessage(context.Background(), &grpcMessage)
@@ -71,27 +71,6 @@ func (ms *MessageServiceImpl) SendMessage(conn *websocket.Conn) {
 }
 
 func (ms *MessageServiceImpl) UserConnected(userId string, conn *websocket.Conn) error {
-
-	// if _, exists := uc.es.activeConn[grpcMessage.SenderId]; !exists {
-
-	// 	connectionMessage := DistributionServerConnectionRequest{UserId: grpcMessage.SenderId, EndServerAddress: "es:3000"}
-
-	// 	connectionResponse, _ := uc.distributorNodeGRPCClient.UserConnected(context.Background(), &connectionMessage)
-
-	// 	//log.Println(connectionResponse)
-	// 	if connectionResponse == nil {
-	// 		log.Fatal("connection response is nil.")
-	// 	}
-	// 	if connectionResponse.ResponseStatus == 500 {
-	// 		log.Fatal("error while informing distributorNode.")
-
-	// 		//return &HttpError{Error: "error while informing distributor Node.", status: 500}
-	// 	}
-
-	// 	uc.es.activeConn[grpcMessage.SenderId] = conn
-	// }
-
-	//log.Println("user connected")
 
 	userConnectionRequest := &generatedCode.DistributionServerConnectionRequest{UserId: userId, EndServerAddress: ms.EndServer.ContainerName + ":3000"}
 	userConnectionResponse, err := ms.DistributionServerClient.UserConnected(context.Background(), userConnectionRequest)
