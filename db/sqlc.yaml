@@ -1,0 +1,12 @@
+version: '2'
+sql:
+- schema: schema.sql
+  queries: queries.sql
+
+  engine: mysql
+  database:
+    uri: mysql://root:52abx-32qj@mysqlDB:3306/chatDB
+  gen:
+    go:
+      package: mysql_code_gen
+      out: /mysql_code_gen
