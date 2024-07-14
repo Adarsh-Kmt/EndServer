@@ -3,10 +3,12 @@ package util
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/Adarsh-Kmt/EndServer/types"
 )
 
 type HttpError struct {
-	Error  string
+	Error  any
 	Status int
 }
 
@@ -20,7 +22,52 @@ func MakeHttpHandlerFunc(f HttpFunc) http.HandlerFunc {
 
 			w.Header().Add("Content-Type", "application/json")
 			w.WriteHeader(HttpError.Status)
-			json.NewEncoder(w).Encode(HttpError.Error)
+			json.NewEncoder(w).Encode(map[string]any{"error": HttpError.Error})
 		}
 	}
+}
+
+func WriteJSON(w http.ResponseWriter, status int, body any) {
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(body)
+}
+
+func ValidateLoginRequest(rq types.UserLoginRequest) *map[string]string {
+
+	errorMap := make(map[string]string)
+	if len(rq.Password) == 0 {
+
+		errorMap["userId"] = "userId cannot be empty."
+
+	}
+
+	if len(rq.UserId) == 0 {
+		errorMap["password"] = "password cannot be empty."
+	}
+
+	if len(errorMap) == 0 {
+		return nil
+	}
+	return &errorMap
+}
+
+func ValidateRegisterRequest(rq types.UserRegisterRequest) *map[string]string {
+
+	errorMap := make(map[string]string)
+	if len(rq.Password) == 0 {
+
+		errorMap["userId"] = "userId cannot be empty."
+
+	}
+
+	if len(rq.UserId) == 0 {
+		errorMap["password"] = "password cannot be empty."
+	}
+
+	if len(errorMap) == 0 {
+		return nil
+	}
+	return &errorMap
 }
