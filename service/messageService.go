@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"os"
 
 	"github.com/Adarsh-Kmt/EndServer/generatedCode"
 	"github.com/Adarsh-Kmt/EndServer/grpc_server"
@@ -15,6 +16,7 @@ import (
 type MessageService interface {
 	SendMessage(senderUsername string, conn *websocket.Conn)
 	UserConnected(userId string, conn *websocket.Conn) error
+	UserDisconnected(username string, conn *websocket.Conn) error
 }
 
 type MessageServiceImpl struct {
@@ -26,44 +28,58 @@ func NewMessageServiceImplInstance(distributionServerClient generatedCode.Distri
 
 	return &MessageServiceImpl{DistributionServerClient: distributionServerClient, EndServer: endServer}
 }
-func (ms *MessageServiceImpl) SendMessage(senderUsername string, conn *websocket.Conn) {
+func (ms *MessageServiceImpl) SendMessage(senderUsername string, senderConn *websocket.Conn) {
 
 	for {
 
-		_, message, err := conn.ReadMessage()
+		_, message, err := senderConn.ReadMessage()
+
+		if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+
+			ms.UserDisconnected(senderUsername, senderConn)
+			return
+		}
 
 		if err != nil {
-			log.Println(err.Error())
-			log.Fatal("error while reading message")
-			//return &HttpError{Error: "error while reading message", status: 500}
+			log.Println("error while reading message: " + err.Error())
+			senderConn.WriteMessage(websocket.TextMessage, []byte("internal server error."))
 		}
 
 		var localMessage types.MessageRequest
 		var grpcMessage generatedCode.DistributionServerMessage
 
 		if err := json.Unmarshal(message, &localMessage); err != nil {
-			log.Fatal(err.Error())
-
-			//return &HttpError{Error: "error unmarshalling message", status: 500}
-
+			log.Println("error occured while unmarshalling message: " + err.Error())
+			senderConn.WriteMessage(websocket.TextMessage, []byte("internal server error."))
 		}
 
 		log.Println(localMessage)
 		grpcMessage = generatedCode.DistributionServerMessage{ReceiverId: localMessage.ReceiverUserId, SenderId: senderUsername, Body: localMessage.Body}
 		log.Println(grpcMessage.Body + " message received")
 
-		response, err := ms.DistributionServerClient.SendMessage(context.Background(), &grpcMessage)
+		if _, exists := ms.EndServer.ActiveConn[localMessage.ReceiverUserId]; exists {
 
-		if err != nil {
-			log.Fatal("grpcError")
+			ReceiverWebsocketConnection := ms.EndServer.ActiveConn[localMessage.ReceiverUserId]
+			if ReceiverWebsocketConnection == nil {
+				log.Println("websocket connection not found for user " + localMessage.ReceiverUserId)
+				senderConn.WriteMessage(websocket.TextMessage, []byte("internal server error."))
+			} else {
+				ReceiverWebsocketConnection.WriteMessage(websocket.TextMessage, []byte(localMessage.Body))
+			}
 
-			//return &HttpError{Error: "grpc error", status: 500}
-		}
+		} else {
 
-		if response.ResponseStatus != 200 {
-			log.Fatal("grpcError")
+			response, err := ms.DistributionServerClient.SendMessage(context.Background(), &grpcMessage)
 
-			//return &HttpError{Error: "grpc error", status: 500}
+			if err != nil || response.ResponseStatus == 500 {
+				log.Println("error while communicating to Distribution Server using gRPC: " + err.Error())
+				senderConn.WriteMessage(websocket.TextMessage, []byte("internal server error."))
+			}
+
+			if response.ResponseStatus == 404 {
+				senderConn.WriteMessage(websocket.TextMessage, []byte("user "+localMessage.ReceiverUserId+" is not online right now."))
+			}
+
 		}
 
 	}
@@ -86,5 +102,19 @@ func (ms *MessageServiceImpl) UserConnected(userId string, conn *websocket.Conn)
 	ms.EndServer.ActiveConn[userId] = conn
 
 	log.Println("distribution server has successfully logged user: " + userId + "'s connection status.")
+	return nil
+}
+
+func (ms *MessageServiceImpl) UserDisconnected(username string, conn *websocket.Conn) error {
+
+	log.Println("user " + username + " has disconnected.")
+	endServerAddress := os.Getenv("CONTAINER_NAME") + ":3000"
+	response, err := ms.DistributionServerClient.UserDisconnected(context.Background(), &generatedCode.DistributionServerConnectionRequest{UserId: username, EndServerAddress: endServerAddress})
+
+	if response.ResponseStatus != 200 || err != nil {
+		log.Println("error while communicating to Distribution Server using gRPC: " + err.Error())
+		return err
+	}
+
 	return nil
 }
