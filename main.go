@@ -61,7 +61,8 @@ func main() {
 		log.Println("ms initialized")
 	}
 
-	uc := controller.NewUserControllerInstance(ms, us)
+	uc := controller.NewUserControllerInstance(us)
+	mc := controller.NewMessageControllerInstance(ms)
 
 	if uc == nil {
 		log.Fatal("uc not initialized")
@@ -70,6 +71,7 @@ func main() {
 	}
 
 	muxRouter = uc.InitializeRouterEndpoints(muxRouter)
+	muxRouter = mc.InitializeRouterEndpoints(muxRouter)
 
 	http.ListenAndServe(":8080", muxRouter)
 
