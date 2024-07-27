@@ -1,24 +1,18 @@
 package controller
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/Adarsh-Kmt/EndServer/service"
+	types "github.com/Adarsh-Kmt/EndServer/types"
 	util "github.com/Adarsh-Kmt/EndServer/util"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
 
 type UserController struct {
-	messageService service.MessageService
-	// distributorNodeGRPCClient generatedCode.DistributionServerMessageServiceClient
-	// es                        grpc_server.EndServer
-}
-
-type Message struct {
-	Body       string `json:"body"`
-	SenderId   string `json:"senderId"`
-	ReceiverId string `json:"receiverId"`
+	userService service.UserService
 }
 
 var upgrader = websocket.Upgrader{
@@ -26,37 +20,59 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func NewUserControllerInstance(MessageService service.MessageService) *UserController {
+func NewUserControllerInstance(UserService service.UserService) *UserController {
 
-	return &UserController{messageService: MessageService}
+	return &UserController{userService: UserService}
 }
 
 func (uc *UserController) InitializeRouterEndpoints(router *mux.Router) *mux.Router {
 
-	router.HandleFunc("/sendMessage/{userId}", util.MakeHttpHandlerFunc(uc.SendMessage))
-
+	router.HandleFunc("/register", util.MakeHttpHandlerFunc(uc.RegisterUser))
+	router.HandleFunc("/login", util.MakeHttpHandlerFunc(uc.LoginUser))
 	return router
 }
 
-func (uc *UserController) SendMessage(w http.ResponseWriter, r *http.Request) *util.HttpError {
+func (uc *UserController) RegisterUser(w http.ResponseWriter, r *http.Request) *util.HttpError {
 
-	conn, err := upgrader.Upgrade(w, r, nil)
+	rq := new(types.UserRegisterRequest)
 
-	if err != nil {
-		return &util.HttpError{Error: "error while switching protocols", Status: 500}
+	json.NewDecoder(r.Body).Decode(rq)
 
+	if errorMap := util.ValidateRegisterRequest(*rq); errorMap != nil {
+
+		return &util.HttpError{Status: 422, Error: errorMap}
+	}
+	httpError := uc.userService.RegisterUser(rq)
+
+	if httpError != nil {
+		return httpError
 	}
 
-	vars := mux.Vars(r)
-
-	userId := vars["userId"]
-
-	err = uc.messageService.UserConnected(userId, conn)
-
-	if err != nil {
-		conn.WriteMessage(websocket.TextMessage, []byte("error while updating connection status of user in the distribution server."))
-	}
-	uc.messageService.SendMessage(conn)
+	util.WriteJSON(w, 200, map[string]string{"successMessage": "you have registered successfully."})
 
 	return nil
+
+}
+
+func (uc *UserController) LoginUser(w http.ResponseWriter, r *http.Request) *util.HttpError {
+
+	rq := new(types.UserLoginRequest)
+
+	json.NewDecoder(r.Body).Decode(rq)
+
+	if errorMap := util.ValidateLoginRequest(*rq); errorMap != nil {
+
+		return &util.HttpError{Status: 422, Error: errorMap}
+	}
+
+	jwtToken, httpError := uc.userService.LoginUser(rq)
+
+	if httpError != nil {
+		return httpError
+	}
+
+	util.WriteJSON(w, 200, map[string]string{"jwtToken": jwtToken})
+
+	return nil
+
 }

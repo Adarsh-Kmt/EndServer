@@ -1,5 +1,7 @@
 FROM golang:1.22.1-alpine
 
+ENV JWT_PRIVATE_KEY=h/M3hOr9mTkeZgnYtLxOUIfhK9kQXAU+hgW7pR84xAQ=
+
 RUN apk update && \
     apk add --no-cache git dos2unix
 

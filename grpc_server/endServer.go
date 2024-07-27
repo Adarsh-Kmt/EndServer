@@ -124,7 +124,7 @@ func NewDistributionServerClientInstance() generatedCode.DistributionServerMessa
 
 func (ed *EndServer) ReceiveMessage(ctx context.Context, message *generatedCode.EndServerMessage) (*generatedCode.EndServerResponse, error) {
 
-	ReceiverWebsocketConnection := ed.ActiveConn[message.ReceiverId]
+	ReceiverWebsocketConnection := ed.ActiveConn[message.ReceiverUsername]
 	if ReceiverWebsocketConnection == nil {
 		log.Fatal("no connection exists")
 	}
