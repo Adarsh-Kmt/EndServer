@@ -54,14 +54,14 @@ func (ms *MessageServiceImpl) SendMessage(senderUsername string, senderConn *web
 		}
 
 		log.Println(localMessage)
-		grpcMessage = generatedCode.DistributionServerMessage{ReceiverId: localMessage.ReceiverUserId, SenderId: senderUsername, Body: localMessage.Body}
+		grpcMessage = generatedCode.DistributionServerMessage{ReceiverUsername: localMessage.ReceiverUsername, SenderUsername: senderUsername, Body: localMessage.Body}
 		log.Println(grpcMessage.Body + " message received")
 
-		if _, exists := ms.EndServer.ActiveConn[localMessage.ReceiverUserId]; exists {
+		if _, exists := ms.EndServer.ActiveConn[localMessage.ReceiverUsername]; exists {
 
-			ReceiverWebsocketConnection := ms.EndServer.ActiveConn[localMessage.ReceiverUserId]
+			ReceiverWebsocketConnection := ms.EndServer.ActiveConn[localMessage.ReceiverUsername]
 			if ReceiverWebsocketConnection == nil {
-				log.Println("websocket connection not found for user " + localMessage.ReceiverUserId)
+				log.Println("websocket connection not found for user " + localMessage.ReceiverUsername)
 				senderConn.WriteMessage(websocket.TextMessage, []byte("internal server error."))
 			} else {
 				ReceiverWebsocketConnection.WriteMessage(websocket.TextMessage, []byte(localMessage.Body))
@@ -77,7 +77,7 @@ func (ms *MessageServiceImpl) SendMessage(senderUsername string, senderConn *web
 			}
 
 			if response.ResponseStatus == 404 {
-				senderConn.WriteMessage(websocket.TextMessage, []byte("user "+localMessage.ReceiverUserId+" is not online right now."))
+				senderConn.WriteMessage(websocket.TextMessage, []byte("user "+localMessage.ReceiverUsername+" is not online right now."))
 			}
 
 		}
@@ -86,22 +86,22 @@ func (ms *MessageServiceImpl) SendMessage(senderUsername string, senderConn *web
 
 }
 
-func (ms *MessageServiceImpl) UserConnected(userId string, conn *websocket.Conn) error {
+func (ms *MessageServiceImpl) UserConnected(username string, conn *websocket.Conn) error {
 
-	userConnectionRequest := &generatedCode.DistributionServerConnectionRequest{UserId: userId, EndServerAddress: ms.EndServer.ContainerName + ":3000"}
+	userConnectionRequest := &generatedCode.DistributionServerConnectionRequest{Username: username, EndServerAddress: ms.EndServer.ContainerName + ":3000"}
 	userConnectionResponse, err := ms.DistributionServerClient.UserConnected(context.Background(), userConnectionRequest)
 
 	if userConnectionResponse == nil {
-		log.Fatal("did not receive user connection response from distribution server for user: " + userId)
+		log.Fatal("did not receive user connection response from distribution server for user: " + username)
 	}
 
 	if err != nil || userConnectionResponse.ResponseStatus == 500 {
 		return err
 	}
 
-	ms.EndServer.ActiveConn[userId] = conn
+	ms.EndServer.ActiveConn[username] = conn
 
-	log.Println("distribution server has successfully logged user: " + userId + "'s connection status.")
+	log.Println("distribution server has successfully logged user: " + username + "'s connection status.")
 	return nil
 }
 
@@ -109,7 +109,7 @@ func (ms *MessageServiceImpl) UserDisconnected(username string, conn *websocket.
 
 	log.Println("user " + username + " has disconnected.")
 	endServerAddress := os.Getenv("CONTAINER_NAME") + ":3000"
-	response, err := ms.DistributionServerClient.UserDisconnected(context.Background(), &generatedCode.DistributionServerConnectionRequest{UserId: username, EndServerAddress: endServerAddress})
+	response, err := ms.DistributionServerClient.UserDisconnected(context.Background(), &generatedCode.DistributionServerConnectionRequest{Username: username, EndServerAddress: endServerAddress})
 
 	if response.ResponseStatus != 200 || err != nil {
 		log.Println("error while communicating to Distribution Server using gRPC: " + err.Error())

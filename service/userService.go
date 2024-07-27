@@ -23,7 +23,7 @@ func NewUserServiceImplInstance(UserRepository repository.UserRepository) *UserS
 }
 func (usi *UserServiceImpl) RegisterUser(urr *types.UserRegisterRequest) *util.HttpError {
 
-	userExists, err := usi.userRepository.UserExists(urr.UserId)
+	userExists, err := usi.userRepository.UserExists(urr.Username)
 
 	if err != nil {
 		log.Println("error : " + err.Error() + " occured in user service.")
@@ -31,7 +31,7 @@ func (usi *UserServiceImpl) RegisterUser(urr *types.UserRegisterRequest) *util.H
 	}
 	if userExists {
 
-		return &util.HttpError{Status: 409, Error: "user with id " + urr.UserId + " already exists."}
+		return &util.HttpError{Status: 409, Error: "user with id " + urr.Username + " already exists."}
 	}
 
 	err = usi.userRepository.SaveUser(urr)
@@ -45,7 +45,7 @@ func (usi *UserServiceImpl) RegisterUser(urr *types.UserRegisterRequest) *util.H
 
 func (usi *UserServiceImpl) LoginUser(ulr *types.UserLoginRequest) (string, *util.HttpError) {
 
-	password, err := usi.userRepository.GetUserCredentials(ulr.UserId)
+	password, err := usi.userRepository.GetUserCredentials(ulr.Username)
 
 	if err != nil {
 		log.Println("error : " + err.Error() + " occured in user service.")
@@ -56,7 +56,7 @@ func (usi *UserServiceImpl) LoginUser(ulr *types.UserLoginRequest) (string, *uti
 		return "", &util.HttpError{Status: 401, Error: "incorrect username/password"}
 	}
 
-	jwtToken, httpError := util.GenerateJwtToken(ulr.UserId)
+	jwtToken, httpError := util.GenerateJwtToken(ulr.Username)
 
 	if httpError != nil {
 		return "", httpError

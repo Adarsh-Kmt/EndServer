@@ -28,7 +28,7 @@ func NewUserRepositoryImplInstance(db *db.MySQLDatabase) *UserRepositoryImpl {
 func (uri *UserRepositoryImpl) SaveUser(urr *types.UserRegisterRequest) error {
 
 	err := uri.MySQLDatabase.Client.AddUser(context.Background(), mysql_code_gen.AddUserParams{
-		Username: urr.UserId,
+		Username: urr.Username,
 		Password: urr.Password,
 	})
 	return err

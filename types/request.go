@@ -1,16 +1,16 @@
 package types
 
 type MessageRequest struct {
-	ReceiverUserId string `json:"ReceiverUserId"`
-	Body           string `json:"Body"`
+	ReceiverUsername string `json:"ReceiverUsername"`
+	Body             string `json:"Body"`
 }
 
 type UserRegisterRequest struct {
-	UserId   string `json:"UserId"`
-	Password string `json:"password"`
+	Username string `json:"Username"`
+	Password string `json:"Password"`
 }
 
 type UserLoginRequest struct {
-	UserId   string `json:"UserId"`
-	Password string `json:"password"`
+	Username string `json:"Username"`
+	Password string `json:"Password"`
 }

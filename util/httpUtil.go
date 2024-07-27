@@ -43,7 +43,7 @@ func ValidateLoginRequest(rq types.UserLoginRequest) *map[string]string {
 
 	}
 
-	if len(rq.UserId) == 0 {
+	if len(rq.Username) == 0 {
 		errorMap["password"] = "password cannot be empty."
 	}
 
@@ -62,7 +62,7 @@ func ValidateRegisterRequest(rq types.UserRegisterRequest) *map[string]string {
 
 	}
 
-	if len(rq.UserId) == 0 {
+	if len(rq.Username) == 0 {
 		errorMap["password"] = "password cannot be empty."
 	}
 
