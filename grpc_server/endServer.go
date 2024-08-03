@@ -54,7 +54,7 @@ func MiddlewareHandler(ctx context.Context, req interface{}, info *grpc.UnarySer
 
 func GenerateTLSCertificate() {
 
-	cmd := exec.Command("/bin/sh", "/app/csrGenerationScript.sh")
+	cmd := exec.Command("/bin/sh", "/prod/csrGenerationScript.sh")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -67,7 +67,7 @@ func GenerateTLSCertificate() {
 }
 func GenerateTLSConfigObjectForEndServer() *tls.Config {
 
-	EndServerCert, err := tls.LoadX509KeyPair("/app/EndServer.pem", "/app/EndServer-key.pem")
+	EndServerCert, err := tls.LoadX509KeyPair("/prod/EndServer.pem", "/prod/EndServer-key.pem")
 
 	if err != nil {
 
@@ -76,7 +76,7 @@ func GenerateTLSConfigObjectForEndServer() *tls.Config {
 
 	RootCA := x509.NewCertPool()
 
-	caBytes, err := os.ReadFile("/app/root.pem")
+	caBytes, err := os.ReadFile("/prod/root.pem")
 
 	if len(caBytes) == 0 {
 		log.Fatal("signed root certificate was not read")
@@ -125,10 +125,15 @@ func NewDistributionServerClientInstance() generatedCode.DistributionServerMessa
 func (ed *EndServer) ReceiveMessage(ctx context.Context, message *generatedCode.EndServerMessage) (*generatedCode.EndServerResponse, error) {
 
 	ReceiverWebsocketConnection := ed.ActiveConn[message.ReceiverUsername]
-	if ReceiverWebsocketConnection == nil {
-		log.Fatal("no connection exists")
-	}
-	ReceiverWebsocketConnection.WriteMessage(websocket.TextMessage, []byte(message.Body))
 
-	return &generatedCode.EndServerResponse{Status: 200}, nil
+	response := &generatedCode.EndServerResponse{}
+	if ReceiverWebsocketConnection == nil {
+		log.Println("User " + message.ReceiverUsername + " is not online right now.")
+		response.Status = 404
+		return response, nil
+	} else {
+		ReceiverWebsocketConnection.WriteMessage(websocket.TextMessage, []byte(message.Body))
+		response.Status = 200
+		return response, nil
+	}
 }
