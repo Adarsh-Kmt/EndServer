@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/Adarsh-Kmt/EndServer/types"
@@ -37,13 +38,14 @@ func WriteJSON(w http.ResponseWriter, status int, body any) {
 func ValidateLoginRequest(rq types.UserLoginRequest) *map[string]string {
 
 	errorMap := make(map[string]string)
-	if len(rq.Password) == 0 {
-
+	if len(rq.Username) == 0 {
+		log.Println("userId cannot be empty.")
 		errorMap["userId"] = "userId cannot be empty."
 
 	}
 
-	if len(rq.Username) == 0 {
+	if len(rq.Password) == 0 {
+		log.Println("password cannot be empty.")
 		errorMap["password"] = "password cannot be empty."
 	}
 
