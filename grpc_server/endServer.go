@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"sync"
 
 	generatedCode "github.com/Adarsh-Kmt/EndServer/generatedCode"
 	"github.com/gorilla/websocket"
@@ -18,14 +19,18 @@ import (
 type EndServer struct {
 	ContainerName string
 	generatedCode.UnimplementedEndServerMessageServiceServer
-	ActiveConn map[string]*websocket.Conn
-	//DistributionServerClient DN_GeneratedCode.MessageServiceClient
+	ActiveConn   map[string]*websocket.Conn
+	ConnMutexMap map[string]*sync.Mutex // used to synchronize concurrent writes to the same websocket connection.
 }
 
 func NewEndServerInstance() *EndServer {
 
 	endServerContainerName := os.Getenv("CONTAINER_NAME")
-	return &EndServer{ContainerName: endServerContainerName, ActiveConn: make(map[string]*websocket.Conn)}
+	return &EndServer{
+		ContainerName: endServerContainerName,
+		ActiveConn:    make(map[string]*websocket.Conn),
+		ConnMutexMap:  make(map[string]*sync.Mutex),
+	}
 
 }
 
@@ -122,9 +127,9 @@ func NewDistributionServerClientInstance() generatedCode.DistributionServerMessa
 	return DNGRPCClient
 }
 
-func (ed *EndServer) ReceiveMessage(ctx context.Context, message *generatedCode.EndServerMessage) (*generatedCode.EndServerResponse, error) {
+func (es *EndServer) ReceiveMessage(ctx context.Context, message *generatedCode.EndServerMessage) (*generatedCode.EndServerResponse, error) {
 
-	ReceiverWebsocketConnection := ed.ActiveConn[message.ReceiverUsername]
+	ReceiverWebsocketConnection := es.ActiveConn[message.ReceiverUsername]
 
 	response := &generatedCode.EndServerResponse{}
 	if ReceiverWebsocketConnection == nil {
@@ -132,7 +137,14 @@ func (ed *EndServer) ReceiveMessage(ctx context.Context, message *generatedCode.
 		response.Status = 404
 		return response, nil
 	} else {
+		log.Printf("end server received message %s for user %s", message.Body, message.ReceiverUsername)
+
+		mutex := es.ConnMutexMap[message.ReceiverUsername]
+
+		mutex.Lock()
 		ReceiverWebsocketConnection.WriteMessage(websocket.TextMessage, []byte(message.Body))
+		mutex.Unlock()
+
 		response.Status = 200
 		return response, nil
 	}
