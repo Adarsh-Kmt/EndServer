@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/Adarsh-Kmt/EndServer/generatedCode"
 	"github.com/Adarsh-Kmt/EndServer/grpc_server"
@@ -109,7 +110,7 @@ func (ms *MessageServiceImpl) UserConnected(username string, conn *websocket.Con
 	}
 
 	ms.EndServer.ActiveConn[username] = conn
-
+	ms.EndServer.ConnMutexMap[username] = &sync.Mutex{}
 	log.Println("distribution server has successfully logged user: " + username + "'s connection status.")
 	return nil
 }

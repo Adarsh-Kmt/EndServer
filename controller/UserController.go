@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/Adarsh-Kmt/EndServer/service"
@@ -29,15 +30,24 @@ func (uc *UserController) InitializeRouterEndpoints(router *mux.Router) *mux.Rou
 
 	router.HandleFunc("/register", util.MakeHttpHandlerFunc(uc.RegisterUser))
 	router.HandleFunc("/login", util.MakeHttpHandlerFunc(uc.LoginUser))
+	router.HandleFunc("/healthCheck", util.MakeHttpHandlerFunc(uc.HealthCheck))
 	return router
 }
 
+func (uc *UserController) HealthCheck(w http.ResponseWriter, r *http.Request) *util.HttpError {
+
+	log.Println("performing health check....")
+	log.Println("sent response 200 OK")
+	response := types.HealthCheckResponse{Status: 200}
+	util.WriteJSON(w, 200, response)
+	return nil
+}
 func (uc *UserController) RegisterUser(w http.ResponseWriter, r *http.Request) *util.HttpError {
 
 	rq := new(types.UserRegisterRequest)
 
 	json.NewDecoder(r.Body).Decode(rq)
-
+	log.Printf("received register request for user %s", rq.Username)
 	if errorMap := util.ValidateRegisterRequest(*rq); errorMap != nil {
 
 		return &util.HttpError{Status: 422, Error: errorMap}
@@ -58,8 +68,12 @@ func (uc *UserController) LoginUser(w http.ResponseWriter, r *http.Request) *uti
 
 	rq := new(types.UserLoginRequest)
 
-	json.NewDecoder(r.Body).Decode(rq)
+	err := json.NewDecoder(r.Body).Decode(rq)
 
+	if err != nil {
+		log.Printf("error while decoding : %s", err.Error())
+	}
+	log.Printf("received login request for user %s", rq.Username)
 	if errorMap := util.ValidateLoginRequest(*rq); errorMap != nil {
 
 		return &util.HttpError{Status: 422, Error: errorMap}
